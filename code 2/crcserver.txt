@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#define SERV_TCP_PORT 5035
+
+int main() {
+    int sockfd, newsockfd, m;
+    struct sockaddr_in serv_addr, cli_addr;
+    char dividend[30], divisor[30], quotient[30] = {0}, remainder[30] = {0}, crc[10] = {0};
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(SERV_TCP_PORT);
+
+    bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+    listen(sockfd, 5);
+
+    int clength = sizeof(cli_addr);
+    newsockfd = accept(sockfd, (struct sockaddr*) &cli_addr, &clength);
+
+    read(newsockfd, dividend, 30);
+    read(newsockfd, divisor, 30);
+    m = strlen(divisor);
+
+    strcpy(remainder, dividend);
+    for (int i = 0; i < m - 1; i++)
+        strcat(remainder, "0");
+
+    int i = 0, j = 0;
+    while (i < strlen(dividend)) {
+        if (remainder[i] == divisor[0]) {
+            quotient[j++] = '1';
+            for (int k = 0; k < m; k++) {
+                if (remainder[i + k] == divisor[k])
+                    remainder[i + k] = '0';
+                else
+                    remainder[i + k] = '1';
+            }
+        } else {
+            quotient[j++] = '0';
+        }
+        i++;
+    }
+
+    write(newsockfd, quotient, 30);
+    write(newsockfd, remainder, 30);
+
+    for (int w = strlen(remainder) - (m - 1), i = 0; w <= strlen(remainder); w++, i++)
+        crc[i] = remainder[w];
+
+    write(newsockfd, crc, 10);
+
+    close(sockfd);
+    return 0;
+}
